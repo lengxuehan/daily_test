@@ -15,19 +15,9 @@
 
 # undef MODERN_SQLITE_STD_OPTIONAL_SUPPORT
 
-// forward declare
-void test_strategySet();
-void test_platformSync();
-void test_seed();
-void test_activation();
-void test_account();
-void test_preference();
-void test_param_version();
-void test_check();
-
 bool parse_json(const std::string &jsonStr, nlohmann::json &value) {
-    value = nlohmann::json::parse(jsonStr);
-    if (!value.is_null()) {
+    value = nlohmann::json::parse(jsonStr, nullptr, false);
+    if (!value.is_discarded()) {
         return true;
     } else {
         return false;
@@ -48,9 +38,6 @@ bool compare_str_json(const std::string & expect, const std::string &src){
 
     return src_value["keys"] == expect_value["keys"];
 }
-
-
-
 
 class  TestHandler {
 public:
@@ -108,95 +95,7 @@ int returnStaticInt(){
     return count++;
 }
 
-template<class UnaryFunction>
-void recursive_iterate(const nlohmann::json& j, UnaryFunction f)
-{
-    for(auto it = j.begin(); it != j.end(); ++it)
-    {
-        if (it.value().is_structured())
-        {
-            recursive_iterate(*it, f);
-        }
-        else
-        {
-            f(it);
-        }
-    }
-}
-
-bool compare_json_response(const nlohmann::json& soa_response, const nlohmann::json& respCompare){
-    std::map<nlohmann::json, bool> map_checked;
-    std::map<std::string, bool> map_keys;
-    if (respCompare.is_array()){
-        for (const auto& checked : respCompare) {
-            map_checked.emplace(std::make_pair(checked, false));
-        }
-    }else{
-        for(auto iter = respCompare.begin(); iter != respCompare.end(); ++iter){
-            map_keys.emplace(std::make_pair(iter.key(), false));
-        }
-    }
-
-    recursive_iterate(soa_response, [&respCompare, &map_checked, &map_keys](nlohmann::json::const_iterator it){
-        if (respCompare.is_array()){
-            for (auto checked : respCompare) {
-                for(auto pos = checked.begin(); pos != checked.end(); ++pos){
-                    if (pos.key() == it.key() && pos.value() == it.value()){
-                        std::cout << "find key:" << it.key() << std::endl;
-                        map_checked[checked] = true;
-                    }
-                }
-            }
-        }else{
-            for(auto pos = respCompare.begin(); pos != respCompare.end(); ++pos){
-                if (pos.key() == it.key() && pos.value() == it.value()){
-                    std::cout << "find key:" << it.key() << std::endl;
-                    map_keys[it.key()] = true;
-                }
-            }
-        }
-    });
-
-    for (auto result : map_checked) {
-        if (!result.second){
-            std::cout << "activate failed\n";
-            return false;
-        }
-    }
-    for (auto result : map_keys) {
-        if (!result.second){
-            std::cout << "activate failed" << std::endl;
-            return false;
-        }
-    }
-    std::cout << "activate succeed" << std::endl;
-    return true;
-}
-
-bool haha()
-{
-    nlohmann::json j = R"({
-        "code": 0,
-        "result": [{
-            "productid": "TestCb1666836184772",
-            "status": 1
-        }]
-    })"_json;
-    nlohmann::json j2 = R"({
-	"activate": {
-		"productid": "TestCb1666836184772",
-		"status": 1
-	},
-	"deactivate": {
-		"productid": "TestCb1666836184772",
-		"status": 0
-	}
-})"_json;
-    return compare_json_response(j,j2["activate"]);
-}
-
-void ForEach(const std::vector<int> &values, void (*func)(int))
-{
+void ForEach(const std::vector<int> &values, void (*func)(int)){
     for (int value : values)
         func(value);
 }
@@ -204,9 +103,11 @@ void ForEach(const std::vector<int> &values, void (*func)(int))
 int main() {
     std::cout << "Hello World!" << std::endl;
 
-    //haha();
+    //test_uds_activate();
 
-    fill_did_data_bits1();
+    nlohmann::json json_obj;
+    std::string str{""};
+    std::cout << nlohmann::json::accept("{\"key\": \"" + str + "\"}")<< std::endl;
 
     auto json_value1 = R"..({"true": 1}).."_json;
    // std::cout << json_value1.is_object() << std::endl;

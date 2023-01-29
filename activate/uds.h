@@ -74,6 +74,7 @@ int fill_did_data_bits() {
     did_value = did_value | tmp;
 
     std::cout << did_value << std::endl;
+    return 0;
 }
 
 bool check_did_bits_mark(const std::vector<uint8_t>& did_record, uint8_t  st_bit, uint8_t  sp_bit){
@@ -106,12 +107,7 @@ bool check_did_bits_mark(const std::vector<uint8_t>& did_record, uint8_t  st_bit
     return true;
 }
 
-int compare_did_data_bits( std::vector<uint8_t>& src){
-    uint8_t  st_bit  = 43;
-    uint8_t  sp_bit  = 47;
-
-    uint32_t expect_did_value{1};
-
+int compare_did_data_bits( std::vector<uint8_t>& src, uint8_t  st_bit, uint8_t  sp_bit, uint32_t expect_did_value){
     for(uint index = st_bit; index <= sp_bit; ++index){
         uint8_t expect_bit_value = expect_did_value & 1;
         expect_did_value = expect_did_value >> 1;
@@ -121,6 +117,9 @@ int compare_did_data_bits( std::vector<uint8_t>& src){
         bit = index % 8;
         uint8_t u_num = src[byte];
         uint8_t bit_value = u_num & (1 << bit);
+        bit_value = (bit_value >> bit) & 1;
+        std::cout <<"expect_bit_value:" <<  static_cast<unsigned int>(expect_bit_value)
+            << " bit_value:" <<  static_cast<unsigned int>(bit_value) << std::endl;
         if(bit_value != expect_bit_value){
             return -1;
         }
@@ -129,13 +128,9 @@ int compare_did_data_bits( std::vector<uint8_t>& src){
     return 0;
 }
 
-// 填充 00001
-// 47（0）46（0）45（0）44（0）43（1）
-void fill_did_data_bits1() {
-    uint8_t  st_bit  = 43;
-    uint8_t  sp_bit  = 47;
-    uint32_t u_action_value   = 1;
 
+void fill_did_data_bits1(uint8_t  st_bit, uint8_t  sp_bit, uint32_t u_action_value) {
+    uint32_t u_tmp_action_value = u_action_value;
     union test {
         int a;
         char b;
@@ -146,6 +141,7 @@ void fill_did_data_bits1() {
 
     std::vector<uint8_t> did_data = {1, 1, 1 ,1, 1, 1, 1};
 
+    std::cout << "init: ";
     for(auto u : did_data){
         std::cout << static_cast<unsigned int>(u) << " , ";
     }
@@ -179,17 +175,31 @@ void fill_did_data_bits1() {
         did_data[byte] = u_num;
     }
 
+    std::cout << "filed: ";
     for(auto u : did_data){
         std::cout << static_cast<unsigned int>(u) << " , ";
     }
-    std::cout << std::endl;
-    did_data[5] = 1;
-    for(auto u : did_data){
-        std::cout << static_cast<unsigned int>(u) << " , ";
-    }
-    std::cout << std::endl;
-    std::cout << "compare_did_data_bits:" << compare_did_data_bits(did_data) << std::endl;
+    //std::cout << std::endl;
+//    did_data[5] = 1;
+//    for(auto u : did_data){
+//        std::cout << static_cast<unsigned int>(u) << " , ";
+//    }
+    //std::cout << std::endl;
+    int res = compare_did_data_bits(did_data, st_bit, sp_bit, u_tmp_action_value);
+    std::cout << "compare_did_data_bits:" << res << std::endl;
 }
 
+void test_uds_activate(){
+    // 填充 00001
+    // 47（0）46（0）45（0）44（0）43（1）
+    //std::cout << "sample 1: st_bit 43  sp_bit 43  action_value 1" << std::endl;
+    //fill_did_data_bits1(43,43,1);
 
+    // st_bit 40 到 sp_bit 50 填充 0x133  ->  100110011
+    //-----st_byte 5-----------|-------st_byte 7---- ---|
+    // 47 46 45 44 43 42 41 40 | 55 54 53 52 51 50 49 48|
+    // 0   0  1  1  0  0  1  1 |                 0  0  1|
+    std::cout  << std::endl << "sample 1: st_bit 40  sp_bit 50  action_value 0x133" << std::endl;
+    fill_did_data_bits1(40,50,0x233);
+}
 #endif //CONFIGURATIONMANAGE_UDS_H
