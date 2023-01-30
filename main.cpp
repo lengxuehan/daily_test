@@ -2,7 +2,6 @@
 #include "sqlite_modern_cpp.h"
 #include "sqlite_modern_cpp/log.h"
 #include "tests/configurationmanage.h"
-#include <jsoncpp/json/json.h>
 #include <queue>
 #include <thread>
 #include <mutex>
@@ -12,32 +11,9 @@
 #include <csignal>
 #include "thread_pool.h"
 #include "activate/uds.h"
+#include "tests/jsons.h"
 
 # undef MODERN_SQLITE_STD_OPTIONAL_SUPPORT
-
-bool parse_json(const std::string &jsonStr, nlohmann::json &value) {
-    value = nlohmann::json::parse(jsonStr, nullptr, false);
-    if (!value.is_discarded()) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool compare_str_json(const std::string & expect, const std::string &src){
-    nlohmann::json expect_value;
-    nlohmann::json src_value;
-    if (!parse_json(expect, expect_value)){
-        std::cout << "compare_str_json parse expect error " << std::endl;
-        return false;
-    }
-    if (!parse_json(src, src_value)){
-        std::cout << "compare_str_json parse src error " << std::endl;
-        return false;
-    }
-
-    return src_value["keys"] == expect_value["keys"];
-}
 
 class  TestHandler {
 public:
@@ -81,7 +57,6 @@ public:
         std::thread t_consume = std::thread{&TestHandler::consume, this};
         auto t = std::thread{&TestHandler::produce, this};
         t_consume.join();
-        //t.join();
     }
 
     std::mutex mtx_;
@@ -96,7 +71,7 @@ int returnStaticInt(){
 }
 
 void ForEach(const std::vector<int> &values, void (*func)(int)){
-    for (int value : values)
+    for(int value : values)
         func(value);
 }
 
@@ -104,13 +79,10 @@ int main() {
     std::cout << "Hello World!" << std::endl;
 
     //test_uds_activate();
-
-    nlohmann::json json_obj;
-    std::string str{""};
-    std::cout << nlohmann::json::accept("{\"key\": \"" + str + "\"}")<< std::endl;
+    jsons_tests();
 
     auto json_value1 = R"..({"true": 1}).."_json;
-   // std::cout << json_value1.is_object() << std::endl;
+    std::cout << json_value1.is_object() << std::endl;
 
     exit(0);
     std::vector<int> values = {1, 2, 3, 2, 1};
