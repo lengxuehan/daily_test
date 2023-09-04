@@ -26,12 +26,11 @@ bool compare_json_response(const nlohmann::json& soa_response, const nlohmann::j
         for (const auto& checked : respCompare) {
             map_checked.emplace(std::make_pair(checked, false));
         }
-    }else{
-        for(auto iter = respCompare.begin(); iter != respCompare.end(); ++iter){
+    }else {
+        for (auto iter = respCompare.cbegin(); iter != respCompare.cend(); ++iter) {
             map_keys.emplace(std::make_pair(iter.key(), false));
         }
     }
-
     recursive_iterate(soa_response, [&respCompare, &map_checked, &map_keys](nlohmann::json::const_iterator it){
         if (respCompare.is_array()){
             for (auto checked : respCompare) {

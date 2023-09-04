@@ -24,60 +24,8 @@
  }]
  */
 
-//按照16比特处理的，给的bit标记也刚好是16个，然后activateValue转成一个uint16，填充过去
-int fill_did_data_bits() {
-    uint8_t  st_byte = 5;
-    uint8_t  st_bit  = 3;
-    uint8_t  sp_byte = 7;
-    uint8_t  sp_bit  = 4;
-    uint16_t u_value   = 1;
 
-
-    std::vector<uint8_t> did_data = {1, 1, 1 ,1, 1, 1, 1};
-    --st_byte;
-    --sp_byte;
-    // copy 'activateValue' or 'deactivateValue' to the specified bits of did_data
-    uint8_t  tmp = did_data[st_byte];
-    uint8_t  left  = tmp >> (8 - st_bit);
-    uint8_t  right =  u_value >> (16 - st_bit);
-    tmp = left << (8 - st_bit) | right;
-    did_data[st_byte++] = tmp;
-    u_value = u_value << (st_bit + 1);
-    for (; st_byte < sp_byte; ++st_byte){
-        tmp =  u_value >> 8;
-        did_data[st_byte] = tmp;
-        u_value = u_value << 8;
-    }
-    tmp = did_data[sp_byte];
-    right = (tmp << sp_bit) >> sp_bit;
-    left  = (u_value >> (16  - sp_bit));
-    tmp =  left << sp_bit | right;
-    did_data[sp_byte] = tmp;
-
-    st_byte = 5;
-    sp_byte = 7;
-    --st_byte;
-    --sp_byte;
-    // cannot compare the total bytes in case other key bits changed in concurrence
-    std::vector<uint8_t>& src = did_data;
-    uint16_t did_value = 0;
-    tmp = src[st_byte++];
-    tmp = (tmp << st_bit) >> st_bit;
-    did_value = tmp << (8 + 8 - st_bit);
-    for (; st_byte < sp_byte; ++st_byte){
-        tmp = src[st_byte];
-        uint16_t  value = tmp;
-        did_value = did_value  | (value << (8 - st_bit)) ;
-    }
-    tmp = src[sp_byte];
-    tmp = tmp >> (8 - sp_bit);
-    did_value = did_value | tmp;
-
-    std::cout << did_value << std::endl;
-    return 0;
-}
-
-bool check_did_bits_mark(const std::vector<uint8_t>& did_record, uint8_t  st_bit, uint8_t  sp_bit){
+bool check_did_bits_mark(const std::vector<uint8_t>& did_record, uint8_t st_bit, uint8_t sp_bit){
 
     uint8_t  st_byte = 0, sp_byte = 0;
     st_byte = st_bit / 8;
@@ -109,12 +57,12 @@ bool check_did_bits_mark(const std::vector<uint8_t>& did_record, uint8_t  st_bit
 
 int compare_did_data_bits( std::vector<uint8_t>& src, uint8_t  st_bit, uint8_t  sp_bit, uint32_t expect_did_value){
     for(uint index = st_bit; index <= sp_bit; ++index){
-        uint8_t expect_bit_value = expect_did_value & 1;
+        uint8_t expect_bit_value = (uint8_t)(expect_did_value & 1);
         expect_did_value = expect_did_value >> 1;
 
         uint8_t  byte = 0, bit = 0;
-        byte = index / 8;
-        bit = index % 8;
+        byte = (uint8_t)(index / 8);
+        bit = (uint8_t)(index % 8);
         uint8_t u_num = src[byte];
         uint8_t bit_value = u_num & (1 << bit);
         bit_value = (bit_value >> bit) & 1;
@@ -128,8 +76,8 @@ int compare_did_data_bits( std::vector<uint8_t>& src, uint8_t  st_bit, uint8_t  
     return 0;
 }
 
-
-void fill_did_data_bits1(uint8_t  st_bit, uint8_t  sp_bit, uint32_t u_action_value) {
+//按照16比特处理的，给的bit标记也刚好是16个，然后activateValue转成一个uint16，填充过去
+void fill_did_data_bits(uint8_t  st_bit, uint8_t  sp_bit, uint32_t u_action_value) {
     uint32_t u_tmp_action_value = u_action_value;
     union test {
         int a;
@@ -164,7 +112,7 @@ void fill_did_data_bits1(uint8_t  st_bit, uint8_t  sp_bit, uint32_t u_action_val
 
 
         uint8_t  byte = 0, bit = 0;
-        byte = index / 8;
+        byte = (uint8_t)(index / 8);
         bit = index % 8;
         uint8_t u_num = did_data[byte];
         if(bit_value){ // 比特位赋值1
@@ -189,6 +137,26 @@ void fill_did_data_bits1(uint8_t  st_bit, uint8_t  sp_bit, uint32_t u_action_val
     std::cout << "compare_did_data_bits:" << res << std::endl;
 }
 
+void convert_key_action_value(const std::string &str_key_did, std::vector<uint8_t> &v_key_did) {
+    std::string str_local_did{};
+    if (str_key_did.find("0x") != std::string::npos) {
+        str_local_did = str_key_did.substr(2);
+    }
+    size_t n_length = str_local_did.length();
+    for (size_t i = 0; i < n_length; i += 2) {
+        size_t n{1};
+        if ((i + 1) < n_length) {
+            n = 2;
+        }
+        v_key_did.emplace_back(static_cast<uint8_t>(std::stoul(str_local_did.substr(i, n), nullptr, 16)));
+    }
+    std::cout << "read vector did value: ";
+    for (auto u: v_key_did) {
+        std::cout << static_cast<unsigned int>(u) << " , ";
+    }
+    std::cout << std::endl;
+}
+
 void test_uds_activate(){
     // 填充 00001
     // 47（0）46（0）45（0）44（0）43（1）
@@ -199,7 +167,13 @@ void test_uds_activate(){
     //-----st_byte 5-----------|-------st_byte 7---- ---|
     // 47 46 45 44 43 42 41 40 | 55 54 53 52 51 50 49 48|
     // 0   0  1  1  0  0  1  1 |                 0  0  1|
-    std::cout  << std::endl << "sample 1: st_bit 40  sp_bit 50  action_value 0x133" << std::endl;
-    fill_did_data_bits1(40,50,0x233);
+    //std::cout  << std::endl << "sample 1: st_bit 40  sp_bit 50  action_value 0x133" << std::endl;
+    //fill_did_data_bits(40,50,0x133);
+    //fill_did_data_bits1(2,2,0x233);
+    std::vector<uint8_t> v_key_did{};
+    convert_key_action_value("0x112233445", v_key_did);
+
+    v_key_did.clear();
+    convert_key_action_value("0x126", v_key_did);
 }
 #endif //CONFIGURATIONMANAGE_UDS_H

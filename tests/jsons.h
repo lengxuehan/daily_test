@@ -17,6 +17,45 @@ bool parse_json(const std::string &jsonStr, nlohmann::json &value) {
     }
 }
 
+std::string to_good_json_string(const std::string& str){
+    std::string res;
+    for (size_t i=0; i<str.length(); i++) {
+        char c = str[i];
+        switch (c) {
+            case '\"':
+                res.append("\\\"");
+                break;
+            case '\\':
+                res.append("\\\\");
+                break;
+            case '/':
+                res.append("\\/");
+                break;
+            case '\b':
+                res.append("\\b");
+                break;
+            case '\f':
+                res.append("\\f");
+                break;
+            case '\n':
+                res.append("\\n");
+                break;
+            case '\r':
+                res.append("\\r");
+                break;
+            case '\t':
+                res.append("\\t");
+                break;
+            case '\'':
+                res.append("\\\'");
+                break;
+            default:
+                res.push_back(c);
+        }
+    }
+    return res;
+}
+
 bool compare_str_json(const std::string & expect, const std::string &src){
     nlohmann::json expect_value;
     nlohmann::json src_value;
@@ -40,8 +79,9 @@ bool is_good_json_string(const std::string& str){
 void jsons_tests(){
     nlohmann::json json_obj;
     //std::vector<uint8_t> data{38,30,34,36,30,30,33,43, 52, 44, 30, 30, 30, 30, 0xe3, 0xe3, 0xe3};
-    std::vector<uint8_t> data{67};
-    std::string str("123\t");//(data.begin(),data.end());
+    std::vector<uint8_t> data{0xe3};
+    //std::string str("123\t");//
+    std::string str(data.begin(),data.end());
     std::cout << str << std::endl;
     std::cout << is_good_json_string(str) << std::endl;
 }

@@ -12,6 +12,10 @@
 #include "thread_pool.h"
 #include "activate/uds.h"
 #include "tests/jsons.h"
+#include "grammar/none_del_copy_ass.h"
+#include "activate/soa.h"
+#include "grammar/std_forward.h"
+#include "grammar/test_wait_for.h"
 
 # undef MODERN_SQLITE_STD_OPTIONAL_SUPPORT
 
@@ -24,15 +28,22 @@ public:
     void consume(){
         do {
             std::unique_lock<std::mutex> lock(mtx_);
-            cv_.wait(lock,[=](){
+            if(cv_.wait_for(lock, std::chrono::seconds(10), [=](){
                 return !queue_.empty() || exit_requested_;
-            });
-            if (exit_requested_){
-                return;
+            })){
+                if (exit_requested_){
+                    return;
+                }
+                std::string str = queue_.front();
+                std::cout << str << " ptr queue =" << &queue_ << std::endl;
+                queue_.pop();
+
+            }else{
+                std::cout << "time out" << std::endl;
+                if (exit_requested_){
+                    return;
+                }
             }
-            std::string str = queue_.front();
-            std::cout << str << " ptr queue =" << &queue_ << std::endl;
-            queue_.pop();
         }while(true);
     }
 
@@ -57,6 +68,7 @@ public:
         std::thread t_consume = std::thread{&TestHandler::consume, this};
         auto t = std::thread{&TestHandler::produce, this};
         t_consume.join();
+        t.join();
     }
 
     std::mutex mtx_;
@@ -74,15 +86,75 @@ void ForEach(const std::vector<int> &values, void (*func)(int)){
     for(int value : values)
         func(value);
 }
+#include <unistd.h>
+#include <syscall.h>
+#include <regex>
+#include <set>
 
 int main() {
-    std::cout << "Hello World!" << std::endl;
+    std::cout << "Hello World!"  << gettid() << std::endl;
+    std::vector<std::string> v_long_strings{{"11111111111"}};
+    int max_print_size = 5;
+    for (auto str : v_long_strings){
+        size_t n_length = str.length();
+        size_t n_begin_index{0};
+        while (n_length >= max_print_size) {
+            std::cout << str.substr(n_begin_index, max_print_size) << std::endl;
+            n_begin_index +=max_print_size;
+            n_length -= max_print_size;
+        }
+        if(n_length > 0){
+            std::cout << str.substr(n_begin_index) << std::endl;
+        }
+    }
 
-    //test_uds_activate();
-    jsons_tests();
+    test_uds_activate();
+    exit(0);
+    std::set<std::string> set_did{};
+    std::string str_did{"0xf189"};
+    std::cout << set_did.count(str_did) << std::endl;
+    set_did.insert(str_did);
+    std::cout << set_did.count(str_did) << std::endl;
+    //test_wait_for();
+    std::chrono::time_point<std::chrono::steady_clock> interval = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    std::this_thread::sleep_until(interval);
+    for(int i = 0 ; i < 3; i++){
+        interval = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+        std::cout << "sleep_until:"  << i << std::endl;
+        std::this_thread::sleep_until(interval);
+    }
+    exit(0);
+    std::string str_cloud_did_version = "^878TCRD000  S.B0[0-9]$";
+    std::regex regex_version{str_cloud_did_version};
+    std::string str_did_from_local = "878TCRD000  S.B00";
+    if(std::regex_match(str_did_from_local, regex_version)){
+        std::cout << "match\n";
+    }else{
+        std::cout << "not match\n";
+    }
+    std_forward_main();
+    char c = 'a';
+    int8_t uc= 'a';
 
-    auto json_value1 = R"..({"true": 1}).."_json;
+    if(c == uc){
+        std::cout << "equal" << std::endl;
+    }
+
+    test_uds_activate();
+
+    test_soa_activate_resp_compare();
+    //jsons_tests();
+
+    //TestHandler test;
+    //test.start();
+
+    auto json_value1 = R"..({"key": "\r\t"}).."_json;
+    std::vector<uint8_t> data{0xe3};
+    std::string  str(data.begin(), data.end());
+    json_value1["key"] = str;
     std::cout << json_value1.is_object() << std::endl;
+
+    test_none_del_ass();
 
     exit(0);
     std::vector<int> values = {1, 2, 3, 2, 1};
@@ -125,8 +197,6 @@ int main() {
 //    //fill_did_data_bits();
 //    t.abort();
 //
-//    TestHandler test;
-//    test.start();
 
     bool error_detected = false;
     sqlite::error_log(
